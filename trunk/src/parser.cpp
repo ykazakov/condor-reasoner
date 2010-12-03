@@ -184,27 +184,47 @@ void Parser::role_inclusion(const Role *r, const Role *s) {
   ontology.hierarchy.add(r, s);
 }
 
-Parser::Parser(istream &inp) : input(inp) {}
-
-void Parser::read() {
+void Parser::read(istream &input) {
   string line;
   int lineno = 0;
   do  {
     getline(input, line); lineno++;
     trim_left(line);
-  } while (!starts_with(line, "Ontology("));
-  line = line.substr(9);
+  } while (input && !starts_with(line, "Ontology"));
+
+  if (!input) {
+      cerr << "Error: \"Ontology\" not found." << endl;
+      exit(0);
+  }
+  int i = 0;
+  while (i < line.size() && line[i] != '(')
+      i++;
+  if (i == line.size()) {
+      cerr << "Error: \"Ontology\" must be followed by '(' on the same line." << endl;
+      exit(0);
+  }
+  line = line.substr(i+1);
   trim_left(line);
 
 //  int line_number = 0;
 
-  while (!starts_with(line, ")")) {
+  while (input && !starts_with(line, ")")) {
     int b = brackets(line);
-    while (b) {
+    int old_lineno = lineno;
+    while (input && b) {
+	if (b < 0) {
+	    cerr << "Error: unmatched \')\' around line " << lineno << "." << endl;
+	    exit(0);
+	}
+
       string tmp;
       getline(input, tmp); lineno++;
       b += brackets(tmp);
       line += tmp;
+    }
+    if (!input) {
+	cerr << "Error: unmatched \'(\' around line " << old_lineno << "." << endl;
+	exit(0);
     }
 
 //    cerr << ++line_number << endl;

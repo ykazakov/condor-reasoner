@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <cstring>
 #include <set>
@@ -425,64 +426,104 @@ void set_top_contexts() {
 	   top_contexts[*r]->process();
 }
 
-void input() {
-    Parser p;
-    p.read();
-}
-
-bool argument_terminate(char *s) {
-
-    if (strcmp(s, "-h") == 0 || strcmp(s, "--help") == 0) {
-	cout << endl;
-	cout << "This is an experimental version of the ConDOR reasoner for classification of ALCH ontologies." << endl;
-	cout << "The input ontology must be in OWL2 functional-style syntax with at most one axiom per line." << endl;
-	cout << "Parsing might not terminate when there are unmatched parentheses (even in annotations)." << endl;
-	cout << endl;
-	cout << "Usage: reasoner < input > output" << endl;
-	cout << "Arguments:" << endl;
-	cout << "-h  (--help): display this help" << endl;
-	cout << "-n  (--nooutput): classify the ontology but suppress the output" << endl;
-	cout << "-v  (--version): print version number" << endl;
-	return true;
-    }
-
-    if (strcmp(s, "-n") == 0 || strcmp(s, "--nooutput") == 0) {
-	OUTPUT = false;
-	return false;
-    }
-
-    if (strcmp(s, "-v") == 0 || strcmp(s, "--version") == 0) {
-	cout << "ConDOR version 0.1" << endl;
-	return true;
-    }
-
-
-//arguments for testing
-    if (strcmp(s, "--verbose") == 0) {
-	VERBOSE = true;
-	OUTPUT = false;
-	return false;
-    }
-
-    if (s[0] == '-') {
-	int x = s[1]-'0';
-	if (x >= 0 || x <= 2)  {
-	    ORDERING = x;
-	    return false;
-	}
-    }	    
-
-    cerr << "Unrecognized argument. Use -h for help." << endl;
-    return true;
-}
 
 int main(int argc, char* argv[]) {
-    for (int i = 1; i < argc; i++) 
-	if (argument_terminate(argv[i]))
-	    return 0;
+    ifstream input;
+    ofstream output;
+    int input_set = 0;
+    int output_set = 0;
 
-    cerr << "PARSING" << endl;
-    input();
+    for (int i = 1; i < argc; i++)  {
+
+	if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+	    cout << endl;
+	    cout << "This is an experimental version of the ConDOR reasoner\n"
+		"for classification of ALCH ontologies. The input file must be\n"
+		"in OWL2 functional-style syntax with at most one axiom per line." << endl;
+	    cout << endl;
+	    cout << "Usage: reasoner < inputfile > outputfile" << endl;
+	    cout << "   or: reasoner -i inputfile -o outputfile" << endl;
+	    cout << endl;
+	    cout << "Arguments:" << endl;
+	    cout << "-h  (--help): display this help" << endl;
+	    cout << "-i  (--input): follow by the input file" << endl;
+	    cout << "-n  (--nooutput): classify the ontology but suppress the output" << endl;
+	    cout << "-o  (--output): follow by the output output file" << endl;
+	    cout << "-v  (--version): print version number" << endl;
+	    return 0;
+	}
+
+	if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--input") == 0) {
+	    if (++i < argc) {
+		input.open(argv[i]);
+		if (!input.is_open()) {
+		    cerr << "Error opening input file: " << argv[i] << endl;
+		    return 0;
+		}
+		input_set = i;
+		continue;
+	    }
+	    cerr << "Input file expected after -i or --input." << endl;
+	    return 0;
+	}
+
+	if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
+	    if (++i < argc) {
+		output.open(argv[i]);
+		if (!output.is_open()) {
+		    cerr << "Error opening output file: " << argv[i] << endl;
+		    return 0;
+		}
+		output_set = i;
+		continue;
+	    }
+	    cerr << "Output file expected after -o or --output." << endl;
+	    return 0;
+	}
+
+	if (strcmp(argv[i], "-n") == 0 || strcmp(argv[i], "--nooutput") == 0) {
+	    OUTPUT = false;
+	    continue;
+	}
+
+	if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+	    cout << "ConDOR version 0.1.2" << endl;
+	    return 0;
+	}
+
+	//arguments for testing
+	if (strcmp(argv[i], "--verbose") == 0) {
+	    VERBOSE = true;
+	    OUTPUT = false;
+	    continue;
+	}
+
+	if (argv[i][0] == '-') {
+	    int x = argv[i][1]-'0';
+	    if (x >= 0 && x <= 2) {
+		ORDERING = x;
+		continue;
+	    }
+	}
+
+	cerr << "Unrecognized argument. Use -h for help." << endl;
+	return 0;
+    }
+
+
+
+
+    cerr << "PARSING from ";
+    Parser p;
+    if (input_set) {
+	cerr << argv[input_set] << endl;
+	p.read(input);
+	input.close();
+    }
+    else {
+	cerr << "standard input" << endl;
+	p.read();
+    }
 
     ontology.normalize();
        cerr << "CLASSIFICATION" << endl;
@@ -515,7 +556,15 @@ int main(int argc, char* argv[]) {
        clear();
 
        if (OUTPUT) {
-	cerr << "OUTPUT" << endl;
-	formatter.write();
+	   cerr << "OUTPUT to ";
+	   if (output_set) {
+	       cerr << argv[output_set] << endl;
+	       formatter.write(output);
+		 output.close();
+	   }
+	   else {
+	       cerr << "standard output" << endl;
+	       formatter.write();
+	   }
        }
 }

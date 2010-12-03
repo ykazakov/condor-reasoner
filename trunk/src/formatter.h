@@ -11,7 +11,6 @@
 using namespace std;
 
 class Formatter {
-  ostream &output;
   bool consistent;
 
   int n;
@@ -22,11 +21,10 @@ class Formatter {
 
 public:
 
-  Formatter(ostream &out = cout);
   void init(const vector<const AtomicConcept*>& ord);
   void unsatisfiable(const Concept* x);
   void subsumption(const Concept* x, const AtomicConcept* y);
-  void write();
+  void write(ostream &output = cout);
 };
 
 #endif /* FORMATTER_H_ */

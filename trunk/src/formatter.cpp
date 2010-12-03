@@ -18,11 +18,8 @@ bool empty_intersection(const T& b1, const T& e1, const S& b2, const S& e2) {
     return true;
 }
 
-
-Formatter::Formatter(ostream &out) : output(out), consistent(true) {
-}
-
 void Formatter::init(const vector<const AtomicConcept*>& ord) {
+    consistent = true;
     concepts = ord;
     n = concepts.size();
     for (int i = 0; i < n; i++)
@@ -57,7 +54,7 @@ void Formatter::subsumption(const Concept* x, const AtomicConcept* y) {
 //  subsum++;
 }
 
-void Formatter::write() {
+void Formatter::write(ostream& output) {
     /*
     cerr << "unsatisfiable: " << unsat << endl;
     cerr << "subsumptions: " << subsum << endl;
