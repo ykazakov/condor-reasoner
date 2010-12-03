@@ -19,7 +19,6 @@ extern Ontology ontology;
 extern Factory factory;
 
 class Parser {
-  istream &input;
   set<string> unsupported_axiom, unsupported_constructor;
 
   int brackets(const string &s);
@@ -31,9 +30,7 @@ class Parser {
   void role_inclusion(const Role *r, const Role *s);
 
 public:
-
-  Parser(istream &input = cin);
-  void read(); // call only once!
+  void read(istream &input = cin); // call only once!
 };
 
 #endif /* PARSER_H_ */
