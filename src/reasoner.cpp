@@ -403,9 +403,12 @@ int Context::process() {
     return 0;
 }
 
-void input() {
-    Parser p;
-    p.read();
+void clear() {
+    Context::UNLINK = false;
+    top_contexts.clear();
+    all_contexts.clear();
+    context_tracker.clear();
+    Context::UNLINK = true;
 }
 
 void set_top_contexts() {
@@ -422,54 +425,61 @@ void set_top_contexts() {
 	   top_contexts[*r]->process();
 }
 
-void clear() {
-    Context::UNLINK = false;
-    top_contexts.clear();
-    all_contexts.clear();
-    context_tracker.clear();
-    Context::UNLINK = true;
+void input() {
+    Parser p;
+    p.read();
+}
+
+bool argument_terminate(char *s) {
+
+    if (strcmp(s, "-h") == 0 || strcmp(s, "--help") == 0) {
+	cout << endl;
+	cout << "This is an experimental version of the ConDOR reasoner for classification of ALCH ontologies." << endl;
+	cout << "The input ontology must be in OWL2 functional-style syntax with at most one axiom per line." << endl;
+	cout << "Parsing might not terminate when there are unmatched parentheses (even in annotations)." << endl;
+	cout << endl;
+	cout << "Usage: reasoner < input > output" << endl;
+	cout << "Arguments:" << endl;
+	cout << "-h  (--help): display this help" << endl;
+	cout << "-n  (--nooutput): classify the ontology but suppress the output" << endl;
+	cout << "-v  (--version): print version number" << endl;
+	return true;
+    }
+
+    if (strcmp(s, "-n") == 0 || strcmp(s, "--nooutput") == 0) {
+	OUTPUT = false;
+	return false;
+    }
+
+    if (strcmp(s, "-v") == 0 || strcmp(s, "--version") == 0) {
+	cout << "ConDOR version 0.1" << endl;
+	return true;
+    }
+
+
+//arguments for testing
+    if (strcmp(s, "--verbose") == 0) {
+	VERBOSE = true;
+	OUTPUT = false;
+	return false;
+    }
+
+    if (s[0] == '-') {
+	int x = s[1]-'0';
+	if (x >= 0 || x <= 2)  {
+	    ORDERING = x;
+	    return false;
+	}
+    }	    
+
+    cerr << "Unrecognized argument. Use -h for help." << endl;
+    return true;
 }
 
 int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) 
-	if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-	    cout << endl;
-	    cout << "This is an experimental version of a ConDOR reasoner for classification of ALCH ontologies." << endl;
-	    cout << "The input ontology must be in OWL2 functional-style syntax with at most one axiom per line." << endl;
-	    cout << "Parsing might fail when there are annotations containing non-ASCII characters or unmatched parentheses." << endl;
-	    cout << endl;
-	    cout << "Usage: reasoner < input > output" << endl;
-	    cout << "Arguments:" << endl;
-	    cout << "-h  (help): display this help" << endl;
-	    cout << "-n  (no output): classify the ontology but suppress the output" << endl;
-	    cout << "-v  (version): print version number" << endl;
+	if (argument_terminate(argv[i]))
 	    return 0;
-	}
-	else if (strcmp(argv[i], "-n") == 0) {
-	    OUTPUT = false;
-	}
-	else if (strcmp(argv[i], "-v") == 0) {
-	    cout << "ConDOR version 0.1" << endl;
-	    return 0;
-	}
-    else if (strcmp(argv[i], "--verbose") == 0) {
-	    VERBOSE = true;
-	    OUTPUT = false;
-	}
-	else if (argv[i][0] == '-') {
-	    int x = argv[i][1]-'0';
-	    if (x < 0 || x > 2) {
-		cerr << "Unrecognized argument. Use -h for help." << endl;
-		return 0;
-	    }
-	    else
-		ORDERING = x;
-	}	    
-
-    
-
-
-
 
     cerr << "PARSING" << endl;
     input();
