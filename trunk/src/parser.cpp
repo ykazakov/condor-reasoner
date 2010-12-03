@@ -51,7 +51,7 @@ vector<string> Parser::split(const string &s) {
     i++;
 
   if (i == s.size())
-    throw IgnoreLine("Empty string to split");
+    throw IgnoreLine("Internal error: empty string to split");
 
   int j = i;
   while (j < s.size() && s[j] != ' ' && s[j] != '(')
@@ -63,7 +63,7 @@ vector<string> Parser::split(const string &s) {
 
   if (j < s.size()) {
     if (s[j] != '(')
-      throw IgnoreLine("Unexpected character in split: " + s);
+      throw IgnoreLine("Unexpected character: " + s[j]);
 
     i = j+1;
     while (true) {
@@ -103,6 +103,7 @@ const Role *Parser::read_role(const string &s) {
   vector<string> v = split(s);
   if (v.size() > 1) {
 
+      /*
     if (v[0] == "ObjectInverseOf") {
       if (v.size() != 2)
 	throw WrongArguments("ObjectInverseOf");
@@ -110,9 +111,10 @@ const Role *Parser::read_role(const string &s) {
     }
 
     else {
+    */
       unsupported_constructor.insert(v[0]);
       throw IgnoreLine();
-    }
+//    }
   }
   else
     return factory.role(v[0]);
@@ -186,8 +188,9 @@ Parser::Parser(istream &inp) : input(inp) {}
 
 void Parser::read() {
   string line;
+  int lineno = 0;
   do  {
-    getline(input, line);
+    getline(input, line); lineno++;
     trim_left(line);
   } while (!starts_with(line, "Ontology("));
   line = line.substr(9);
@@ -199,7 +202,7 @@ void Parser::read() {
     int b = brackets(line);
     while (b) {
       string tmp;
-      getline(input, tmp);
+      getline(input, tmp); lineno++;
       b += brackets(tmp);
       line += tmp;
     }
@@ -207,7 +210,7 @@ void Parser::read() {
 //    cerr << ++line_number << endl;
 
 
-    if (line == "" || line[0] == '<' || starts_with(line, "Annotation") || starts_with(line, "Declaration"));	//ignore
+    if (line == "" || line[0] == '<' || starts_with(line, "Annotation") || starts_with(line, "Declaration") || starts_with(line, "//"));	//ignore
     else {
       try {
 
@@ -263,6 +266,7 @@ void Parser::read() {
 	      role_inclusion(r[i], r[j]);
 	}
 
+	/*
 	else if (v[0] == "InverseObjectProperties") {
 	  if (v.size() != 3)
 	    throw WrongArguments("InverseObjectProperties");
@@ -271,6 +275,7 @@ void Parser::read() {
 	  role_inclusion(r, s->inverse());
 	  role_inclusion(s->inverse(), r);
 	}
+	*/
 
 	else if (v[0] == "ObjectPropertyDomain") {
 	    if (v.size() != 3)
@@ -293,10 +298,10 @@ void Parser::read() {
       }
       catch (IgnoreLine exc) {
 	if (exc.verbose)
-	  cerr << exc.message << " in" << endl << line << endl;
+	  cerr << exc.message << " around line " << lineno << ":" << endl << line << endl << endl;
       }
     }
-    getline(input, line);
+    getline(input, line); lineno++;
     trim_left(line);
   }
 

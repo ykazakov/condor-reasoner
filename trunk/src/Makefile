@@ -1,4 +1,4 @@
-compile = g++ -O3 
+compile = g++ -O2
 
 .PHONY: main clean
 
