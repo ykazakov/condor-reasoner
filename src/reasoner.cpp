@@ -441,8 +441,8 @@ int main(int argc, char* argv[]) {
 		"for classification of ALCH ontologies. The input file must be\n"
 		"in OWL2 functional-style syntax with at most one axiom per line." << endl;
 	    cout << endl;
-	    cout << "Usage: reasoner < inputfile > outputfile" << endl;
-	    cout << "   or: reasoner -i inputfile -o outputfile" << endl;
+	    cout << "Usage: condor < inputfile > outputfile" << endl;
+	    cout << "   or: condor -i inputfile -o outputfile" << endl;
 	    cout << endl;
 	    cout << "Arguments:" << endl;
 	    cout << "-h  (--help): display this help" << endl;
