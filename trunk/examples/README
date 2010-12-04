@@ -8,7 +8,9 @@ CONTENTS:
 
 Example:
 
-  ../bin/condor < pizza.owl > pizza-tax.owl
+  ../bin/condor -i pizza.owl -o pizza-tax.owl
+  OR
+  ../bin/condor < pizza.owl > pizza-tax.ow
 
 will load the ontology from file "pizza.owl", classifies it,
 and outputs the sorted taxonomy into the file "pizza-tax.owl"
