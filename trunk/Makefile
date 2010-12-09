@@ -5,10 +5,11 @@ SUBDIRS = src
 main: $(SUBDIRS)
 
 clean: 
-	$(MAKE) TARGET=clean
+	@$(MAKE) TARGET=clean
 
 $(SUBDIRS):
-	$(MAKE) -C $@ $(TARGET)
+	@echo descending to $@
+	@$(MAKE) -C $@ $(TARGET)
 
 install:
 	cp ./src/condor ./bin/condor

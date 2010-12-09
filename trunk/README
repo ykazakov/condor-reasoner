@@ -38,10 +38,10 @@ For usage examples see the directory [/examples]
 
 REQUIREMENTS:
 
-Currently ConDOR can only read ontologies in OWL-2 founctional-style
+Currently ConDOR can only read ontologies in OWL-2 functional-style
 syntax and supports a subsets of the constructors corresponding to ALCH.
 The reasoner will ignore any constructor or axiom type that it doesn't
-support and issue a worning. Classes starting with unsupported
+support and issue a warning. Classes starting with unsupported
 constructors will be treated as anonymous classes, which should not
 result in any unsound inferences.
 

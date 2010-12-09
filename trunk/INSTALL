@@ -5,11 +5,11 @@ PREREQUISITES
 
 INSTALLATION INSTRUCTIONS
 
-To compile the programm, type:
+To compile the program, type:
 
   make
 
-if successfull, in order to create the binaries into the directory
+if successful, in order to create the binaries into the directory
 [./bin] type:
 
   make install
