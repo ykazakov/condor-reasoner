@@ -23,7 +23,7 @@ void Formatter::init(const vector<const AtomicConcept*>& ord) {
     concepts = ord;
     n = concepts.size();
     for (int i = 0; i < n; i++)
-	order[concepts[i]->positive()] = i;
+	order[concepts[i]->ID()] = i;
     super.resize(n);
 }
 
@@ -34,7 +34,7 @@ int subsum = 0;
 
 void Formatter::unsatisfiable(const Concept* x) {
 	if (x->type() == 'A')
-		bot.insert(order[x->positive()]);
+		bot.insert(order[x->ID()]);
 	else if (x->type() == 'T')
 		consistent == false;
 	else 
@@ -43,12 +43,12 @@ void Formatter::unsatisfiable(const Concept* x) {
 }
 
 void Formatter::subsumption(const Concept* x, const AtomicConcept* y) {
-	if (x->positive() == y->positive())
+	if (x->ID() == y->ID())
 		return;
 	if (x->type() == 'A') 
-	    super[order[x->positive()]].push_back(order[y->positive()]);
+	    super[order[x->ID()]].push_back(order[y->ID()]);
 	else if (x->type() == 'T')
-		top.insert(y->positive());
+		top.insert(y->ID());
 	else
 		cerr << "Internal error: Unexpected concept type for formatter" << endl;
 //  subsum++;

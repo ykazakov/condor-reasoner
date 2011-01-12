@@ -14,24 +14,39 @@ class ConceptVisitor;
 
 class Concept {
   protected:
-  static const ConceptID annotated_offset, negative_offset;
-  ConceptID neg, pos;
+  static const ConceptID annotated_mask;
+  static const ConceptID decompose_mask;
+  static const ConceptID normalize_mask;
+
+  static ConceptID max_id, min_id;
+  ConceptID id;
 
   public:
   Concept();
   virtual ~Concept() = 0;
 
-  ConceptID positive() const { return pos; }
-  ConceptID negative() const { return neg; }
+  ConceptID ID() const { return id; }
 
   virtual string to_string() const = 0;
   virtual char type() const = 0;
   virtual void accept (ConceptVisitor& visitor) const = 0;
 
+  static ConceptID maximal_ID();
+  static ConceptID minimal_ID();
+
   static ConceptID normalize(ConceptID id);
   static ConceptID annotate(ConceptID id);
-  static bool plain(ConceptID id);
-  static bool annotated(ConceptID id);
+  static bool is_annotated(ConceptID id);
+  static ConceptID clear_decompose(ConceptID id);
+  static ConceptID mark_decompose(ConceptID id);
+  static ConceptID concept_decompose(const Concept* c); 
+  static bool decompose(ConceptID id);
+
+  struct DecomposeLess {
+      bool operator()(ConceptID lhs, ConceptID rhs) const {
+	  return (clear_decompose(lhs)) < (clear_decompose(rhs));
+      }
+  };
 };
 
 class AtomicConcept : public Concept {
@@ -40,15 +55,15 @@ class AtomicConcept : public Concept {
 
   public:
   virtual ~AtomicConcept() {}
-  explicit AtomicConcept(const string& name) : name(name) { pos = neg = next_id++; }
+  explicit AtomicConcept(const string& name) : name(name) { id = next_id++; }
 
   virtual string to_string() const;
   virtual char type() const;
   virtual void accept(ConceptVisitor &visitor) const;
 
   struct AlphaLess {
-    bool operator()(const AtomicConcept *rhs, const AtomicConcept *lhs) const {
-      return rhs->name < lhs->name;
+    bool operator()(const AtomicConcept *lhs, const AtomicConcept *rhs) const {
+      return lhs->name < rhs->name;
     }
   };
 };
@@ -57,7 +72,7 @@ class TopConcept : public Concept {
   static ConceptID next_id;
   public:
   virtual ~TopConcept() {}
-  explicit TopConcept() { pos = neg = next_id++; }
+  explicit TopConcept() { id = next_id++; }
   virtual string to_string() const;
   virtual char type() const;
   virtual void accept(ConceptVisitor &visitor) const;
@@ -67,7 +82,7 @@ class BottomConcept : public Concept {
   static ConceptID next_id;
   public:
   virtual ~BottomConcept() {}
-  explicit BottomConcept() { pos = neg = next_id++; }
+  explicit BottomConcept() { id = next_id++; }
   virtual string to_string() const;
   virtual char type() const;
   virtual void accept(ConceptVisitor &visitor) const;
@@ -79,7 +94,7 @@ class NegationConcept : public Concept {
 
   public:
   virtual ~NegationConcept() {}
-  explicit NegationConcept(const Concept *c) : c(c) { pos = neg = next_id++; }
+  explicit NegationConcept(const Concept *c) : c(c) { id = next_id++; }
   const Concept *concept() const { return c; };
 
   virtual string to_string() const;
@@ -93,7 +108,7 @@ class ConjunctionConcept : public Concept {
 
   public:
   virtual ~ConjunctionConcept() {}
-  explicit ConjunctionConcept(const vector<const Concept *> &v) : v(v) { pos = neg = next_id++; }
+  explicit ConjunctionConcept(const vector<const Concept *> &v) : v(v) { id = next_id++; }
   const vector<const Concept *> &elements() const { return v; }
 
   virtual string to_string() const;
@@ -107,7 +122,7 @@ class DisjunctionConcept : public Concept {
 
   public:
   virtual ~DisjunctionConcept() {}
-  explicit DisjunctionConcept(const vector<const Concept *> &v) : v(v) { pos = neg = next_id++; }
+  explicit DisjunctionConcept(const vector<const Concept *> &v) : v(v) { id = next_id++; }
   const vector<const Concept *> &elements() const { return v; }
 
   virtual string to_string() const;
@@ -122,7 +137,7 @@ class ExistentialConcept : public Concept {
 
   public:
   virtual ~ExistentialConcept() {}
-  explicit ExistentialConcept(const pair<const Role *, const Concept *> &p) : r(p.first), c(p.second) { pos = next_id++; neg = pos + negative_offset; }
+  explicit ExistentialConcept(const pair<const Role *, const Concept *> &p) : r(p.first), c(p.second) { id = next_id++; }
   const Role *role() const { return r; }
   const Concept *concept() const { return c; }
 
@@ -138,7 +153,7 @@ class UniversalConcept : public Concept {
 
   public:
   virtual ~UniversalConcept() {}
-  explicit UniversalConcept(const pair<const Role *, const Concept *> &p) : r(p.first), c(p.second) { pos = next_id++; neg = pos + negative_offset; }
+  explicit UniversalConcept(const pair<const Role *, const Concept *> &p) : r(p.first), c(p.second) { id = next_id++; }
   const Role *role() const { return r; }
   const Concept *concept() const { return c; }
 
@@ -146,6 +161,19 @@ class UniversalConcept : public Concept {
   virtual char type() const;
   virtual void accept(ConceptVisitor &visitor) const;
 };
+
+class DummyConcept : public Concept {
+    const Role *r;
+    const Concept *c;
+
+   public:
+    virtual ~DummyConcept() {}
+    explicit DummyConcept(int ID) { id = ID; }
+    virtual string to_string() const;
+    virtual char type() const;
+    virtual void accept(ConceptVisitor &visitor) const;
+};
+
 
 class ConceptVisitor {
   virtual void atomic(const AtomicConcept *c) = 0;
@@ -156,6 +184,7 @@ class ConceptVisitor {
   virtual void disjunction(const DisjunctionConcept *c) = 0;
   virtual void existential(const ExistentialConcept *c) = 0;
   virtual void universal(const UniversalConcept *c) = 0;
+  virtual void dummy(const DummyConcept *c) {}
 
   public:
     virtual ~ConceptVisitor() = 0;
@@ -168,28 +197,32 @@ class ConceptVisitor {
   friend class DisjunctionConcept;
   friend class ExistentialConcept;
   friend class UniversalConcept;
+  friend class DummyConcept;
 };
 
 inline ConceptID Concept::normalize(ConceptID id) {
-  if (id < annotated_offset)
-    return id;
-  else
-    return id-annotated_offset;
+    return (id & normalize_mask);
 }
 
 inline ConceptID Concept::annotate(ConceptID id) {
-	if (id < annotated_offset)
-		return id+annotated_offset;
-	else
-		return id;
+    return (id | annotated_mask);
 }
 
-inline bool Concept::plain(ConceptID id) {
-  return (id < annotated_offset);
+inline bool Concept::is_annotated(ConceptID id) {
+  return (id & annotated_mask) != 0;
 }
 
-inline bool Concept::annotated(ConceptID id) {
-  return (id >= annotated_offset);
+inline ConceptID Concept::mark_decompose(ConceptID id) {
+    return (id | decompose_mask);
+}
+
+
+inline ConceptID Concept::clear_decompose(ConceptID id) {
+    return (id & ~decompose_mask);
+}
+
+inline bool Concept::decompose(ConceptID id) {
+    return (id & decompose_mask) != 0;
 }
 
 #endif /* CONCEPT_H_ */

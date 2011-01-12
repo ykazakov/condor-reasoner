@@ -1,18 +1,31 @@
 #include "concept.h"
 
-const int offset = 10000000;
+#include "sstream"
 
-const ConceptID Concept::annotated_offset = 100*offset;
-const ConceptID Concept::negative_offset = 25*offset;
+const int offset = 1000000;
 
-ConceptID AtomicConcept::next_id = 1*offset;
-ConceptID TopConcept::next_id = 0*offset;
-ConceptID BottomConcept::next_id = 8*offset;
-ConceptID NegationConcept::next_id = 7*offset;
-ConceptID ConjunctionConcept::next_id = 6*offset;
-ConceptID DisjunctionConcept::next_id = 5*offset;
-ConceptID ExistentialConcept::next_id = 2*offset;
-ConceptID UniversalConcept::next_id = 3*offset;
+const ConceptID Concept::annotated_mask = 1<<27;
+const ConceptID Concept::decompose_mask = 1<<28;
+const ConceptID Concept::normalize_mask = (1<<25)-1;
+
+ConceptID Concept::max_id = 10*offset;
+ConceptID Concept::min_id = offset-1;
+
+ConceptID Concept::maximal_ID() {
+    return max_id++;
+}
+ConceptID Concept::minimal_ID() {
+    return min_id--;
+}
+
+ConceptID AtomicConcept::next_id = 9*offset;
+ConceptID TopConcept::next_id = 8*offset;
+ConceptID BottomConcept::next_id = 1*offset;
+ConceptID NegationConcept::next_id = 2*offset;
+ConceptID ConjunctionConcept::next_id = 3*offset;
+ConceptID DisjunctionConcept::next_id = 4*offset;
+ConceptID ExistentialConcept::next_id = 7*offset;
+ConceptID UniversalConcept::next_id = 6*offset;
 
 ConceptVisitor::~ConceptVisitor() {}
 
@@ -51,6 +64,9 @@ void UniversalConcept::accept(ConceptVisitor &visitor) const {
   visitor.universal(this); 
 }
 
+void DummyConcept::accept(ConceptVisitor &visitor) const { 
+  visitor.dummy(this); 
+}
 
 string AtomicConcept::to_string() const{ 
   return name; 
@@ -90,6 +106,11 @@ string UniversalConcept::to_string() const {
   return "ObjectAllValuesFrom(" + r->to_string() + " " + c->to_string() + ")"; 
 }
 
+string DummyConcept::to_string() const {
+    stringstream ss;
+    ss << "Dummy(" << ID() << ")";
+    return ss.str();
+}
 
 
 char AtomicConcept::type() const{ 
@@ -123,3 +144,16 @@ char ExistentialConcept::type() const {
 char UniversalConcept::type() const { 
   return 'U';
 }
+
+char DummyConcept::type() const {
+    return 'X';
+}
+
+ConceptID Concept::concept_decompose(const Concept* c) {
+    char t = c->type();
+    if (t == 'N' || t == 'C' || t == 'D' || t == 'E' || t == 'U')
+	return mark_decompose(c->ID());
+    else
+	return c->ID();
+}
+
