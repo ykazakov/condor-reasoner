@@ -29,9 +29,13 @@ public:
 
   unordered_multimap<ConceptID, Disjunction> unary_axioms;
   unordered_multimap<ConceptID, pair<ConceptID, Disjunction> > binary_axioms;
+  map<ConceptID, int> binary_count;
+
+  set<const ExistentialConcept*> negative_existentials;
   multimap<pair<ConceptID, RoleID>, ConceptID> universal_axioms;  // could try hash_map instead
   set<RoleID> positive_roles;
   set<pair<RoleID, Disjunction> > role_range;
+  set<RoleID> transitive_roles;
 
   void nullary(const Disjunction& a);
   void unary(ConceptID c, const Disjunction& a);
@@ -39,6 +43,7 @@ public:
 
   void subsumption(const Concept*, const Concept*);
   void disjoint(const Concept*, const Concept*);
+  void transitive_role(const Role*);
 
   Ontology();
   ~Ontology();

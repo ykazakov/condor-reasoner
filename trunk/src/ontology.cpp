@@ -6,7 +6,7 @@
 extern Factory factory;
 
 void Ontology::nullary(const Disjunction& a) {
-    unary(factory.top()->positive(), a);
+    unary(factory.top()->ID(), a);
 }
 
 void Ontology::unary(ConceptID c, const Disjunction& a) {
@@ -16,6 +16,8 @@ void Ontology::unary(ConceptID c, const Disjunction& a) {
 void Ontology::binary(ConceptID c1, ConceptID c2, const Disjunction& a) {
   binary_axioms.insert(make_pair(c1, make_pair(c2, a)));
   binary_axioms.insert(make_pair(c2, make_pair(c1, a)));
+  binary_count[c1]++;
+  binary_count[c2]++;
 }
 
 class Ontology::NegativeStructuralTransformation : public ConceptVisitor {
@@ -63,15 +65,15 @@ class Ontology::PositiveStructuralTransformation : public ConceptVisitor {
 };
 
 bool Ontology::NegativeStructuralTransformation::not_seen(const Concept* c) {
-    if (seen.find(c->negative()) == seen.end()) {
-	seen.insert(c->negative());
+    if (seen.find(c->ID()) == seen.end()) {
+	seen.insert(c->ID());
 	return true;
     }
     return false;
 }
 bool Ontology::PositiveStructuralTransformation::not_seen(const Concept* c) {
-    if (seen.find(c->positive()) == seen.end()) {
-	seen.insert(c->positive());
+    if (seen.find(c->ID()) == seen.end()) {
+	seen.insert(c->ID());
 	return true;
     }
     return false;
@@ -80,24 +82,27 @@ bool Ontology::PositiveStructuralTransformation::not_seen(const Concept* c) {
 void Ontology::NegativeStructuralTransformation::atomic(const AtomicConcept *c) {}
 void Ontology::PositiveStructuralTransformation::atomic(const AtomicConcept *c) {}
 
-void Ontology::NegativeStructuralTransformation::top(const TopConcept *c) {}
+void Ontology::NegativeStructuralTransformation::top(const TopConcept *c) {
+    if (not_seen(c)) 
+	ontology->nullary(Disjunction(c->ID())); 
+}
 void Ontology::PositiveStructuralTransformation::top(const TopConcept *c) {}
 
 void Ontology::NegativeStructuralTransformation::bottom(const BottomConcept *c) {}
 void Ontology::PositiveStructuralTransformation::bottom(const BottomConcept *c) { 
     if (not_seen(c))
-	ontology->unary(c->positive(), Disjunction()); 
+	ontology->unary(c->ID(), Disjunction()); 
 }
 
 void Ontology::NegativeStructuralTransformation::negation(const NegationConcept *c) {
     if (not_seen(c)) {
-	ontology->nullary(Disjunction(c->positive(), c->concept()->negative()));
+	ontology->nullary(Disjunction(c->ID(), Concept::concept_decompose(c->concept())));
 	c->concept()->accept(*positive);
     }
 }
 void Ontology::PositiveStructuralTransformation::negation(const NegationConcept *c) { 
     if (not_seen(c)) {
-	ontology->binary(c->positive(), c->concept()->negative(), Disjunction());
+	ontology->binary(Concept::concept_decompose(c), c->concept()->ID(), Disjunction());
 	c->concept()->accept(*negative);
     }
 }
@@ -105,20 +110,20 @@ void Ontology::PositiveStructuralTransformation::negation(const NegationConcept 
 void Ontology::NegativeStructuralTransformation::conjunction(const ConjunctionConcept *c) {
     if (not_seen(c)) {
 	vector<const Concept*> u, q(c->elements());
-	set<ConceptID> s;
+	set<ConceptID, Concept::DecomposeLess> s;
         for (int i = 0; i < q.size(); i++) {
 	    if (q[i]->type() == 'C') {
 		FOREACH(x, ((const ConjunctionConcept*) q[i])->elements())
 		    q.push_back(*x);
 	    } else if (q[i]->type() == 'N') {
 		const NegationConcept* x = (const NegationConcept*) q[i];
-		s.insert(x->concept()->positive());
+		s.insert(Concept::concept_decompose(x->concept()));
 		x->concept()->accept(*positive);
 	    }
 	    else if (q[i]->type() == 'U') {
 		const UniversalConcept* y = (const UniversalConcept*) q[i];
 		const ExistentialConcept* x = factory.existential(y->role(), factory.negation(y->concept()));
-		s.insert(x->positive());
+		s.insert(Concept::concept_decompose(x));
 		x->accept(*positive);
 	    }
 	    else {
@@ -126,12 +131,12 @@ void Ontology::NegativeStructuralTransformation::conjunction(const ConjunctionCo
 		q[i]->accept(*this);
 	    }
 	}
-	s.insert(c->negative());
+	s.insert(c->ID());
 
 	if (u.empty())
 	    ontology->nullary(Disjunction(s));
 	else if (u.size() == 1)
-	    ontology->unary(u[0]->negative(), Disjunction(s));
+	    ontology->unary(u[0]->ID(), Disjunction(s));
 	else {
 	    const Concept *d = u[0];
 	    vector<const Concept*> t;
@@ -139,17 +144,17 @@ void Ontology::NegativeStructuralTransformation::conjunction(const ConjunctionCo
 	    for (int i = 1; i < u.size()-1; i++) {
 		t.push_back(u[i]);
 		const Concept *conj = factory.conjunction(t);
-		ontology->binary(d->negative(), u[i]->negative(), Disjunction(conj->negative()));
+		ontology->binary(d->ID(), u[i]->ID(), Disjunction(conj->ID()));
 		d = conj;
 	    }
-	    ontology->binary(d->negative(), u.back()->negative(), Disjunction(s));
+	    ontology->binary(d->ID(), u.back()->ID(), Disjunction(s));
 	}
     }
 }
 void Ontology::PositiveStructuralTransformation::conjunction(const ConjunctionConcept *c) {
     if (not_seen(c)) 
 	for (vector<const Concept*>::const_iterator i = c->elements().begin(); i != c->elements().end(); i++) {
-	    ontology->unary(c->positive(), Disjunction((*i)->positive()));
+	    ontology->unary(Concept::concept_decompose(c), Disjunction(Concept::concept_decompose(*i)));
 	    (*i)->accept(*this);
 	}
 }
@@ -157,13 +162,13 @@ void Ontology::PositiveStructuralTransformation::conjunction(const ConjunctionCo
 void Ontology::NegativeStructuralTransformation::disjunction(const DisjunctionConcept* c) {
     if (not_seen(c))
 	for (vector<const Concept*>::const_iterator i = c->elements().begin(); i != c->elements().end(); i++) {
-	    ontology->unary((*i)->negative(), Disjunction(c->negative()));
+	    ontology->unary((*i)->ID(), Disjunction(c->ID()));
 	    (*i)->accept(*this);
 	}
 }
 void Ontology::PositiveStructuralTransformation::disjunction(const DisjunctionConcept* c) {
     if (not_seen(c)) {
-	ontology->unary(c->positive(), Disjunction(c->elements(), true));
+	ontology->unary(Concept::concept_decompose(c), Disjunction(c->elements(), true));
 	for (vector<const Concept*>::const_iterator i = c->elements().begin(); i != c->elements().end(); i++) 
 	    (*i)->accept(*this);
     }
@@ -171,7 +176,7 @@ void Ontology::PositiveStructuralTransformation::disjunction(const DisjunctionCo
 
 void Ontology::NegativeStructuralTransformation::existential(const ExistentialConcept *c) {
     if (not_seen(c)) {
-	ontology->universal_axioms.insert(make_pair(make_pair(c->concept()->negative(), c->role()->ID()), c->negative()));
+	ontology->negative_existentials.insert(c);
 	c->concept()->accept(*this);
     }
 }
@@ -185,7 +190,7 @@ void Ontology::PositiveStructuralTransformation::existential(const ExistentialCo
 void Ontology::NegativeStructuralTransformation::universal(const UniversalConcept *c) {
     if (not_seen(c)) {
 	const ExistentialConcept* e = factory.existential(c->role(), factory.negation(c->concept()));
-	ontology->nullary(Disjunction(c->negative(), e->positive()));
+	ontology->nullary(Disjunction(c->ID(), Concept::concept_decompose(e)));
 	e->accept(*positive);
     }
 }
@@ -193,9 +198,9 @@ void Ontology::NegativeStructuralTransformation::universal(const UniversalConcep
 void Ontology::PositiveStructuralTransformation::universal(const UniversalConcept *c) {
     if (not_seen(c)) {
 	const ExistentialConcept* e = factory.existential(c->role(), factory.negation(c->concept()));
-	ontology->binary(c->positive(), e->negative(), Disjunction());
+	ontology->binary(Concept::concept_decompose(c), e->ID(), Disjunction());
 	if (negative->not_seen(e))
-	    ontology->universal_axioms.insert(make_pair(make_pair(e->concept()->negative(), e->role()->ID()), e->negative()));
+	    ontology->negative_existentials.insert(e);
 	c->concept()->accept(*this); //skip one
     }
 }
@@ -206,19 +211,24 @@ void Ontology::subsumption(const Concept* c, const Concept* d) {
 
     if (c->type() == 'T' && d->type() == 'U') {
 	const UniversalConcept* u = (const UniversalConcept*) d;
-	role_range.insert(make_pair(u->role()->ID(), Disjunction(u->concept()->positive())));
+	role_range.insert(make_pair(u->role()->ID(), Disjunction(Concept::concept_decompose(u->concept()))));
 	u->concept()->accept(*pos_str);
+	c->accept(*neg_str);
 	return;
     }
     c->accept(*neg_str);
     d->accept(*pos_str);
-    unary(c->negative(), Disjunction(d->positive()));
+    unary(c->ID(), Disjunction(Concept::concept_decompose(d)));
 }
 
 void Ontology::disjoint(const Concept* c, const Concept* d) {
     c->accept(*neg_str);
     d->accept(*neg_str);
-    binary(c->negative(), d->negative(), Disjunction());
+    binary(c->ID(), d->ID(), Disjunction());
+}
+
+void Ontology::transitive_role(const Role* r) {
+    transitive_roles.insert(r->ID());
 }
 
 Ontology::Ontology() {
@@ -236,11 +246,46 @@ Ontology::~Ontology() {
 void Ontology::normalize() {
     hierarchy.closure();
 
-    vector<pair<pair<ConceptID, RoleID>, ConceptID> > v; 
-    FOREACH(a, universal_axioms)
+    //reduce number of neighbours in binary_axioms
+    map<ConceptID, ConceptID> dummy;
+    FOREACH(i, binary_count)
+	if (i->second > 100) {
+	    ConceptID d = factory.dummy(Concept::minimal_ID())->ID();
+	    dummy[i->first] = d;
+	    EQRANGE(j, binary_axioms, i->first)
+		unary(j->second.first, Disjunction(d, j->second.second)); 
+	}
+    FOREACH(i, binary_axioms)
+	if (dummy.find(i->first) != dummy.end() || dummy.find(i->second.first) != dummy.end())
+	    binary_axioms.erase(i);
+    FOREACH(i, dummy) {
+	binary_axioms.insert(make_pair(i->first, make_pair(i->second, Disjunction())));
+	binary_axioms.insert(make_pair(i->second, make_pair(i->first, Disjunction())));
+    }
+
+    //unfold role hierarchy into existential axioms
+    FOREACH(e, negative_existentials)
 	FOREACH(r, positive_roles)
-	    if (hierarchy(*r, a->first.second))
-		v.push_back(make_pair(make_pair(a->first.first, *r), a->second));
-    FOREACH(a, v)
-	universal_axioms.insert(*a);
+	    if (hierarchy(*r, (*e)->role()->ID())) 
+		universal_axioms.insert(make_pair(make_pair((*e)->concept()->ID(), *r), (*e)->ID()));
+		
+    //reduce transitivity for existentials (incomplete in general)
+    FOREACH(e, negative_existentials) {
+	RoleID r = (*e)->role()->ID();
+	if (transitive_roles.find(r) != transitive_roles.end()) 
+	    FOREACH(s, positive_roles)
+		if (hierarchy(*s, r))
+		    universal_axioms.insert(make_pair(make_pair((*e)->ID(), *s), (*e)->ID()));
+
+	FOREACH(t, transitive_roles)
+	    if (*t != r && hierarchy(*t, r)) {
+		ConceptID f = factory.existential(factory.role(*t), (*e)->concept())->ID();
+		FOREACH(s, positive_roles)
+		    if (hierarchy(*s, *t)) {
+			universal_axioms.insert(make_pair(make_pair((*e)->concept()->ID(), *s), f));
+			universal_axioms.insert(make_pair(make_pair(f, *s), f));
+			universal_axioms.insert(make_pair(make_pair(f, *s), (*e)->ID()));
+		    }
+	    }
+    }
 }

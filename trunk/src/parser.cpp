@@ -313,6 +313,13 @@ void Parser::read(istream &input) {
 	    concept_subsumption(factory.top(), factory.universal(r, c));
 	}
 
+	else if (v[0] == "TransitiveObjectProperty") {
+	    if (v.size() != 2)
+		throw WrongArguments("TransitiveObjectProperty");
+	    const Role* r = read_role(v[1]);
+	    ontology.transitive_role(r);
+	}
+
 	else
 	  unsupported_axiom.insert(v[0]);
       }

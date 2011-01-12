@@ -20,6 +20,7 @@ class Factory {
   tracker<vector<const Concept*>, const DisjunctionConcept> disjunction_tracker;
   tracker<pair<const Role*, const Concept*>, const ExistentialConcept> existential_tracker;
   tracker<pair<const Role*, const Concept*>, const UniversalConcept> universal_tracker;
+  hash_tracker<int, const DummyConcept> dummy_tracker;
   const TopConcept* top_tracker;
   const BottomConcept* bottom_tracker;
 
@@ -45,6 +46,7 @@ class Factory {
   const Concept* improper_disjunction(vector<const Concept*>& v);
   const ExistentialConcept* existential(const Role* r, const Concept* c);
   const UniversalConcept* universal(const Role* r, const Concept* c);
+  const DummyConcept* dummy(int id);
 
   vector<const AtomicConcept*> all_atomic_ordered();
 };

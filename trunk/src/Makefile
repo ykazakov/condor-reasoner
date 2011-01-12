@@ -1,4 +1,5 @@
 compile = g++ -O2
+#-pg
 
 .PHONY: main clean
 

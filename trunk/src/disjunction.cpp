@@ -9,43 +9,55 @@
 
 const Disjunction Disjunction::bottom = Disjunction();
 
+const int Disjunction::has_annotated_mask = 1<<10;
+const int Disjunction::size_mask = Disjunction::has_annotated_mask-1;;
+const int Disjunction::reuse_offset = 1<<11;
+const int Disjunction::reuse_mask = ~(Disjunction::reuse_offset-1);
+
+//extern string write_disjunction(const Disjunction&);
+
 void Disjunction::allocate(int n) {
 	t = new ConceptID[n+1];
 	t[0] = n;
 }
 
-inline void Disjunction::from_set(const set<ConceptID>& s) {
+inline void Disjunction::from_set(const set<ConceptID, Concept::DecomposeLess>& s) {
 	allocate(s.size());
-	ConceptID* i = t+s.size();
+	ConceptID* i = t;
 	FOREACH(x, s) {
-		*i = *x;
-		i--;
+	    i++;
+	    *i = *x;
+	    /*
+	    if (Concept::is_annotated(*x))
+		t[0] |= has_annotated_mask;
+		*/
 	}
 }
 
 Disjunction& Disjunction::operator=(const Disjunction& rhs) {
-    if ((t[0] & ~mask) == 0)
+    if ((t[0] & reuse_mask) == 0)
 	delete[] t;
     else
-	t[0] -= offset;
+	t[0] -= reuse_offset;
     t = rhs.t;
-    t[0] += offset;
+    t[0] += reuse_offset;
     return *this;
 }
 
 Disjunction::Disjunction(const Disjunction& rhs) {
     t = rhs.t;
-    t[0] += offset;
+    t[0] += reuse_offset;
 }
 
 Disjunction::~Disjunction() {
-    if ((t[0] & ~mask) == 0)
+    if ((t[0] & reuse_mask) == 0)
 	delete[] t;
     else
-	t[0] -= offset;
+	t[0] -= reuse_offset;
 }
 
-Disjunction::Disjunction() {
+Disjunction::Disjunction(bool bottom) {
+    if (bottom)
 	allocate(0);
 }
 
@@ -53,32 +65,43 @@ Disjunction::Disjunction() {
 Disjunction::Disjunction(ConceptID id) {
 	allocate(1);
 	t[1] = id;
-}
-
-Disjunction::Disjunction(const set<ConceptID>& s) {
-    from_set(s);
+	/*
+	if (Concept::is_annotated(id))
+	    t[0] |= has_annotated_mask;
+	    */
 }
 
 Disjunction::Disjunction(ConceptID c, ConceptID d) {
-    set<ConceptID> s;
+    set<ConceptID, Concept::DecomposeLess> s;
     s.insert(c);
     s.insert(d);
     from_set(s);
 }
 
-Disjunction::Disjunction(const vector<const Concept*>& v, bool positive) {
-    set<ConceptID> s;
-    FOREACH(x, v)
-	s.insert(positive ? (*x)->positive() : (*x)->negative());
+Disjunction::Disjunction(ConceptID c, Disjunction d) {
+    set<ConceptID, Concept::DecomposeLess> s;
+    FOREACH(i, d)
+	s.insert(*i);
+    s.insert(c);
     from_set(s);
 }
 
+Disjunction::Disjunction(const set<ConceptID, Concept::DecomposeLess>& s) {
+    from_set(s);
+}
+
+Disjunction::Disjunction(const vector<const Concept*>& v, bool decompose) {
+    set<ConceptID, Concept::DecomposeLess> s;
+    FOREACH(x, v)
+	s.insert(decompose ? Concept::concept_decompose(*x) : (*x)->ID());
+    from_set(s);
+}
 
 bool Disjunction::operator==(const Disjunction& rhs) const {
 	if (size() != rhs.size())
 		return false;
 	for (int i = 1; i <= size(); i++) 
-		if (t[i] != rhs.t[i])
+		if (Concept::clear_decompose(t[i]) != Concept::clear_decompose(rhs.t[i]))
 			return false;
 	return true;
 }
@@ -90,10 +113,10 @@ bool Disjunction::operator!=(const Disjunction& rhs) const {
 bool Disjunction::operator<(const Disjunction& rhs) const {
 	if (size() == rhs.size()) {
 		int i = 1;
-		while (i <= size() && t[i] == rhs.t[i]) 
+		while (i <= size() && Concept::clear_decompose(t[i]) == Concept::clear_decompose(rhs.t[i])) 
 			i++;
 		if (i <= size())
-			return t[i] < rhs.t[i];
+			return Concept::clear_decompose(t[i]) < Concept::clear_decompose(rhs.t[i]);
 		else
 			return false;
 	}
@@ -107,62 +130,99 @@ bool Disjunction::subset(const Disjunction& rhs) const {
 		do {
 			if (j > rhs.size()) //|| t[i] > rhs.t[j])
 				return false;
-		} while (t[i] != rhs.t[j++]);
+		} while (Concept::clear_decompose(t[i]) != Concept::clear_decompose(rhs.t[j++]));
 	return true;
 }
 
-Disjunction Disjunction::resolve(const Disjunction& a, ConceptID h) const {
+const int INF = 1<<30;
+Disjunction Disjunction::resolve(const Disjunction& a) const {
+
   if (a.size() == 1)
       return *this;
+  Disjunction d(false);
+  d.allocate(size()+a.size()-1);
 
-  set<ConceptID> s;
-  ConceptID* i;
-  for (i = a.begin(); *i != h; i++)
-      s.insert((ORDERING == 2) ? Concept::annotate(*i) : *i);
+  ConceptID *i = t+1;
+  ConceptID *j = a.t+2;
+  ConceptID *k = d.t+1;
 
-  for (i++; i != a.end(); i++)
-      if (s.find(Concept::annotate(*i)) == s.end())
-          s.insert(*i);
+  while (i != end() || j != a.end()) {
+      ConceptID ci = (i == end()) ? INF : Concept::clear_decompose(*i);
+      ConceptID cj = (j == a.end()) ? INF : Concept::clear_decompose(*j);
+      if (ci <= cj) {
+	  *k = *i;
+	  k++;
+	  i++;
+	  if (ci == cj)
+	      j++;
+      }
+      else {
+	  *k = *j;
+	  k++;
+	  j++;
+      }
+  }
 
-  for (i = begin(); i != end(); i++)
-      if (s.find(Concept::annotate(*i)) == s.end())
-	  s.insert(*i);
-
-  return Disjunction(s);
+    d.t[0] = k-d.t-1;
+    /*
+      if (has_annotated() || a.has_annotated())
+	  d.t[0] |= has_annotated_mask;
+	  */
+      return d;
 }
 
-Disjunction Disjunction::resolve(const Disjunction& a1, ConceptID h1, const Disjunction& a2, ConceptID h2) const {
+Disjunction Disjunction::resolve(const Disjunction& a1, const Disjunction& a2) const {
     if (a1.size() == 1 && a2.size() == 1)
 	return *this;
 
-  set<ConceptID> s;
-  ConceptID *i, *j;
+    Disjunction d(false);
+    d.allocate(size()+a1.size()+a2.size()-2);
 
-  for (i = a1.begin(); *i != h1; i++)
-      s.insert((ORDERING == 2) ? Concept::annotate(*i) : *i);
-  for (j = a2.begin(); *j != h2; j++)
-      s.insert((ORDERING == 2) ? Concept::annotate(*j) : *j);
+    ConceptID *i = t+1;
+    ConceptID *j1 = a1.t+2;
+    ConceptID *j2 = a2.t+2;
+    ConceptID *k = d.t+1;
 
-  for (i++; i != a1.end(); i++)
-      if (s.find(Concept::annotate(*i)) == s.end())
-          s.insert(*i);
-  for (j++; j != a2.end(); j++)
-      if (s.find(Concept::annotate(*j)) == s.end())
-          s.insert(*j);
+    while (i != end() || j1 != a1.end() || j2 != a2.end()) {
+	ConceptID ci = (i == end()) ? INF : Concept::clear_decompose(*i); 
+	ConceptID cj1 = (j1 == a1.end()) ? INF : Concept::clear_decompose(*j1); 
+	ConceptID cj2 = (j2 == a2.end()) ? INF : Concept::clear_decompose(*j2); 
 
-  for (i = begin(); i != end(); i++)
-      if (s.find(Concept::annotate(*i)) == s.end())
-	  s.insert(*i);
+	if (ci <= cj1 && ci <= cj2) {
+	    *k = *i;
+	    k++;
+	    i++;
+	    if (ci == cj1)
+		j1++;
+	    if (ci == cj2)
+		j2++;
+	}
+	else if (cj1 <= cj2) {
+	    *k = *j1;
+	    k++;
+	    j1++;
+	    if (cj1 == cj2)
+		j2++;
+	}
+	else {
+	    *k = *j2;
+	    k++;
+	    j2++;
+	}
+    }
 
-  return Disjunction(s);
+    d.t[0] = k-d.t-1;
+    /*
+    if (has_annotated() || a1.has_annotated() || a2.has_annotated())
+	    d.t[0] |= has_annotated_mask;
+	    */
+    return d;
 }
 
-/*
-bool Disjunction::occurs(const unordered_multimap<ConceptID, Disjunction>& m) const {
-  for (int i = 1; i <= size(); i++) 
-   EQRANGE(j, m, t[i])
-      if (j->second.subset(*this))
-		return true;
-  return false;
+Disjunction Disjunction::annotate() const {
+    if (size() == 0 || Concept::is_annotated(front())) 
+	cerr << "Internal error: annotate on empty" << endl;
+
+    Disjunction d(Concept::annotate(Concept::normalize(front())));
+    return d.resolve(*this);
 }
-*/
