@@ -591,7 +591,7 @@ int main(int argc, char* argv[]) {
 	    cout << "-i  (--input): follow by the input file" << endl;
 	    cout << "-n  (--nooutput): classify the ontology but suppress the output" << endl;
 	    cout << "-o  (--output): follow by the output output file" << endl;
-	    cout << "-s  (--stats): write perfomance statistics into statistics.out" << endl;
+//	    cout << "-s  (--stats): write performance log into condor.log" << endl;
 	    cout << "-v  (--version): print version number" << endl;
 	    return 0;
 	}
@@ -634,16 +634,16 @@ int main(int argc, char* argv[]) {
 	    return 0;
 	}
 
-	if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--stats") == 0) {
-	    PRINT_STATS = true;
+
+	//arguments for testing
+	if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--write") == 0) {
+	    VERBOSE = true;
+	    OUTPUT = false;
 	    continue;
 	}
 
-
-	//arguments for testing
-	if (strcmp(argv[i], "-w") == 0) {
-	    VERBOSE = true;
-	    OUTPUT = false;
+	if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--stats") == 0) {
+	    PRINT_STATS = true;
 	    continue;
 	}
 	
@@ -789,7 +789,7 @@ int main(int argc, char* argv[]) {
 
 	   if (PRINT_STATS) {
 	       ofstream stats;
-	       stats.open("statistics.out");
+	       stats.open("condor.log");
 
 	       stats << "Command:";
 	       for (int i = 1; i < argc; i++)
