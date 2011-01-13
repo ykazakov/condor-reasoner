@@ -32,6 +32,7 @@ public:
   map<ConceptID, int> binary_count;
 
   set<const ExistentialConcept*> negative_existentials;
+  set<const UniversalConcept*> positive_universals;
   multimap<pair<ConceptID, RoleID>, ConceptID> universal_axioms;  // could try hash_map instead
   set<RoleID> positive_roles;
   set<pair<RoleID, Disjunction> > role_range;

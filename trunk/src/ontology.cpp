@@ -197,10 +197,7 @@ void Ontology::NegativeStructuralTransformation::universal(const UniversalConcep
 
 void Ontology::PositiveStructuralTransformation::universal(const UniversalConcept *c) {
     if (not_seen(c)) {
-	const ExistentialConcept* e = factory.existential(c->role(), factory.negation(c->concept()));
-	ontology->binary(Concept::concept_decompose(c), e->ID(), Disjunction());
-	if (negative->not_seen(e))
-	    ontology->negative_existentials.insert(e);
+	ontology->positive_universals.insert(c);
 	c->concept()->accept(*this); //skip one
     }
 }
@@ -246,6 +243,30 @@ Ontology::~Ontology() {
 void Ontology::normalize() {
     hierarchy.closure();
 
+    //reduce transitivity for universals
+    set<const UniversalConcept *> s;   
+    FOREACH(u, positive_universals) 
+	FOREACH(i, transitive_roles)
+	    if (hierarchy(*i, (*u)->role()->ID())) {
+		const Role *t = factory.role(*i);
+		const UniversalConcept *c = factory.universal(t, factory.universal(t, (*u)->concept()));
+		if (t != (*u)->role())
+		    unary(Concept::concept_decompose(*u), Disjunction(Concept::concept_decompose(c)));
+		s.insert(c);
+	    }
+    FOREACH(u, s) {
+	unary(Concept::concept_decompose((*u)->concept()), Disjunction(Concept::concept_decompose(*u)));
+	positive_universals.insert(*u);
+	positive_universals.insert((const UniversalConcept *) (*u)->concept());
+    }
+
+    //duals of universals
+    FOREACH(u, positive_universals) {
+	const ExistentialConcept *e = factory.existential((*u)->role(), factory.negation((*u)->concept()));
+	negative_existentials.insert(e);
+	binary(Concept::concept_decompose(*u), e->ID(), Disjunction());
+    }
+		    
     //reduce number of neighbours in binary_axioms
     map<ConceptID, ConceptID> dummy;
     FOREACH(i, binary_count)
@@ -269,7 +290,7 @@ void Ontology::normalize() {
 	    if (hierarchy(*r, (*e)->role()->ID())) 
 		universal_axioms.insert(make_pair(make_pair((*e)->concept()->ID(), *r), (*e)->ID()));
 		
-    //reduce transitivity for existentials (incomplete in general)
+    //reduce transitivity for existentials
     FOREACH(e, negative_existentials) {
 	RoleID r = (*e)->role()->ID();
 	if (transitive_roles.find(r) != transitive_roles.end()) 
