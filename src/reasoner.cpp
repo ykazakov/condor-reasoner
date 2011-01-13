@@ -23,7 +23,7 @@
 
 using namespace std;
 
-bool PRINT_STATS = false;
+bool PRINT_LOG = false;
 bool VERBOSE = false;
 bool OUTPUT = true;
 
@@ -480,6 +480,8 @@ int Context::process() {
 					}
 
 					if (norm->type() == 'U') {
+						resolve_unary(ax, ax.front()); // for transitivity
+
 						const UniversalConcept *u = (const UniversalConcept*) norm;
 						RoleID r = u->role()->ID();
 						Disjunction d(Concept::concept_decompose(u->concept()), Concept::annotate(factory.negation(u->concept())->ID()));
@@ -591,7 +593,7 @@ int main(int argc, char* argv[]) {
 	    cout << "-i  (--input): follow by the input file" << endl;
 	    cout << "-n  (--nooutput): classify the ontology but suppress the output" << endl;
 	    cout << "-o  (--output): follow by the output output file" << endl;
-//	    cout << "-s  (--stats): write performance log into condor.log" << endl;
+//	    cout << "-l  (--log): write performance log into condor.log" << endl;
 	    cout << "-v  (--version): print version number" << endl;
 	    return 0;
 	}
@@ -642,8 +644,8 @@ int main(int argc, char* argv[]) {
 	    continue;
 	}
 
-	if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--stats") == 0) {
-	    PRINT_STATS = true;
+	if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0) {
+	    PRINT_LOG = true;
 	    continue;
 	}
 	
@@ -787,7 +789,7 @@ int main(int argc, char* argv[]) {
 
     timepoint[3] = clock();
 
-	   if (PRINT_STATS) {
+	   if (PRINT_LOG) {
 	       ofstream stats;
 	       stats.open("condor.log");
 
