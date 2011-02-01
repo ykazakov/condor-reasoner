@@ -582,7 +582,7 @@ int main(int argc, char* argv[]) {
 	if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
 	    cout << endl;
 	    cout << "This is an experimental version of the ConDOR reasoner\n"
-		"for classification of ALCH ontologies. The input file must be\n"
+		"for classification of SH ontologies. The input file must be\n"
 		"in OWL2 functional-style syntax with at most one axiom per line." << endl;
 	    cout << endl;
 	    cout << "Usage: condor < inputfile > outputfile" << endl;
@@ -592,9 +592,9 @@ int main(int argc, char* argv[]) {
 	    cout << "-h  (--help): display this help" << endl;
 	    cout << "-i  (--input): follow by the input file" << endl;
 	    cout << "-n  (--nooutput): classify the ontology but suppress the output" << endl;
-	    cout << "-o  (--output): follow by the output output file" << endl;
+	    cout << "-o  (--output): follow by the output file" << endl;
 //	    cout << "-l  (--log): write performance log into condor.log" << endl;
-	    cout << "-v  (--version): print version number" << endl;
+//	    cout << "-v  (--version): print version number" << endl;
 	    return 0;
 	}
 
@@ -630,12 +630,6 @@ int main(int argc, char* argv[]) {
 	    OUTPUT = false;
 	    continue;
 	}
-
-	if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-	    cout << "ConDOR version 0.2.0" << endl;
-	    return 0;
-	}
-
 
 	//arguments for testing
 	if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--write") == 0) {

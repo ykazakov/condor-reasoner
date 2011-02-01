@@ -4,7 +4,7 @@ ConDOR is an experimental reasoner for ontologies based on a new kind of
 "consequence-based" reasoning procedure.
 
 Currently ConDOR supports a fragment of OWL-2 which corresponds to the
-DL ALCH.
+DL SH.
 
 CONTENTS:
 
@@ -39,11 +39,10 @@ For usage examples see the directory [/examples]
 REQUIREMENTS:
 
 Currently ConDOR can only read ontologies in OWL-2 functional-style
-syntax and supports a subsets of the constructors corresponding to ALCH.
-The reasoner will ignore any constructor or axiom type that it doesn't
-support and issue a warning. Classes starting with unsupported
-constructors will be treated as anonymous classes, which should not
-result in any unsound inferences.
+syntax and supports a subsets of the constructors corresponding to SH.
+The reasoner will ignore any constructor or axiom type that it 
+doesn't support and issue a warning. This hould not result in any 
+unsound inferences.
 
 For the description of OWL-2 functional-style syntax, see:
 http://www.w3.org/TR/owl2-syntax/
