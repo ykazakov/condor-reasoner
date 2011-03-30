@@ -160,7 +160,7 @@ class Context {
 	set<Context*> backward_links;
 	set<pair<RoleID, Disjunction> > universals;
 
-	vector<const Concept*> super;
+	vector<const AtomicConcept*> super;
 
 	int axioms;
 
@@ -423,7 +423,7 @@ int Context::process() {
 				}
 				else {
 				    if (goals_set) 
-					super.push_back(norm);
+					super.push_back((const AtomicConcept*) norm);
 				    else
 					formatter.subsumption(core, (const AtomicConcept*) norm);
 				}
@@ -739,7 +739,7 @@ int main(int argc, char* argv[]) {
 	    if (a.size() > 1) {
 		const DummyConcept* d = factory.dummy(line);
 		FOREACH(x, a)
-		    ontology.unary(d->ID(), Disjunction(*x));
+		    ontology.unary(d->ID(), Disjunction((*x)->ID()));
 		goals.push_back(d);
 	    }
 	}
@@ -804,9 +804,11 @@ int main(int argc, char* argv[]) {
 
 	if (goals_set) {
 	    (output_set ? output : cout) << endl << (*a)->to_string() << endl;
-	    if (now.satisfiable) 
+	    if (now.satisfiable) {
+		sort(now.super.begin(), now.super.end(), AtomicConcept::AlphaLess());
 		FOREACH(x, now.super)
 		    (output_set ? output : cout) << "  " << (*x)->to_string() << endl;
+	    }
 	    else
 		(output_set ? output : cout) << "  owl:Nothing" << endl;
 	}
