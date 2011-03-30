@@ -32,6 +32,8 @@ bool REMOVE_OPT = false;
 bool TOP_PRESENT, TOP_OPT = false;
 bool SECONDARY_OPT = false;
 
+int goals_set = 0;
+
 string write_disjunction(const Disjunction& d) {
     stringstream ss;
     FOREACH(x, d) {
@@ -158,10 +160,12 @@ class Context {
 	set<Context*> backward_links;
 	set<pair<RoleID, Disjunction> > universals;
 
+	vector<const Concept*> super;
+
 	int axioms;
 
 	//  public:
-	explicit Context(pair<RoleID, ConceptID>);
+	explicit Context(pair<RoleID, const Concept*>);
 	~Context();
 	void unlink();
 
@@ -178,18 +182,18 @@ class Context {
 
 bool Context::UNLINK = true;
 
-tracker<pair<RoleID, ConceptID>, Context> context_tracker; //could try hash_tracker
-map<ConceptID, tracker<pair<RoleID, ConceptID>, Context> > secondary_context_tracker;
+tracker<pair<RoleID, const Concept*>, Context> context_tracker; //could try hash_tracker
+map<ConceptID, tracker<pair<RoleID, const Concept*>, Context> > secondary_context_tracker;
 vector<Context* > top_contexts;
 vector<list<Context*> > all_contexts;
 list<Context*> active;
 
 Context* Context::secondary_context(RoleID r, const Concept* c) {
 	ConceptID s = core->ID();
-	return secondary_context_tracker[s](make_pair(r, c->ID()));
+	return secondary_context_tracker[s](make_pair(r, c));
 }
 
-Context::Context(pair<RoleID, ConceptID> rc) : core(factory.concept(rc.second)), inrole(rc.first), top(core->type() == 'T'), satisfiable(true), processing(false), secondary(false) { 
+Context::Context(pair<RoleID, const Concept*> rc) : core(rc.second), inrole(rc.first), top(core->type() == 'T'), satisfiable(true), processing(false), secondary(false) { 
     todo.insert(Disjunction(Concept::concept_decompose(core)));
 	if (!TOP_OPT && TOP_PRESENT)
 		todo.insert(Disjunction(factory.top()->ID()));
@@ -348,7 +352,7 @@ int Context::process() {
 					cout << factory.role(inrole)->to_string() << ",";
 				cout  <<  core->to_string() << endl;
 			}
-			if (!inrole)
+			if (!inrole && !goals_set)
 				formatter.unsatisfiable(core);
 			//if this == top can end here
 			push(Disjunction::bottom);
@@ -418,7 +422,10 @@ int Context::process() {
 
 				}
 				else {
-				    formatter.subsumption(core, (const AtomicConcept*) norm);
+				    if (goals_set) 
+					super.push_back(norm);
+				    else
+					formatter.subsumption(core, (const AtomicConcept*) norm);
 				}
 			}
 
@@ -467,7 +474,7 @@ int Context::process() {
 							if (ontology.hierarchy(r, u->first))
 								secondary_target = true;
 
-						Context* target = (secondary_target) ? secondary_context(r, e->concept()) : context_tracker(make_pair(r, e->concept()->ID()));
+						Context* target = (secondary_target) ? secondary_context(r, e->concept()) : context_tracker(make_pair(r, e->concept()));
 						if (target->satisfiable) {
 							link(r, target);
 							if (TOP_OPT)
@@ -558,12 +565,11 @@ void clear() {
 }
 
 void set_top_contexts() {
-	ConceptID top_id = factory.top()->ID();
 	top_contexts.reserve(Role::number());
 
-	top_contexts[0] = context_tracker(make_pair(0, top_id));
+	top_contexts[0] = context_tracker(make_pair(0, factory.top()));
 	FOREACH(r, ontology.positive_roles) 
-		top_contexts[*r] = context_tracker(make_pair(*r, top_id));
+		top_contexts[*r] = context_tracker(make_pair(*r, factory.top()));
 
 	top_contexts[0]->process();
 	FOREACH(r, ontology.positive_roles) 
@@ -574,6 +580,7 @@ void set_top_contexts() {
 int main(int argc, char* argv[]) {
     ifstream input;
     ofstream output;
+    ifstream goals_file;
     int input_set = 0;
     int output_set = 0;
 
@@ -593,8 +600,8 @@ int main(int argc, char* argv[]) {
 	    cout << "-i  (--input): follow by the input file" << endl;
 	    cout << "-n  (--nooutput): classify the ontology but suppress the output" << endl;
 	    cout << "-o  (--output): follow by the output file" << endl;
+	    cout << "-g  (--goals): follow by a file containing a list of classification goals" << endl;
 //	    cout << "-l  (--log): write performance log into condor.log" << endl;
-//	    cout << "-v  (--version): print version number" << endl;
 	    return 0;
 	}
 
@@ -623,6 +630,21 @@ int main(int argc, char* argv[]) {
 		continue;
 	    }
 	    cerr << "Output file expected after -o or --output." << endl;
+	    return 0;
+	}
+
+	if (strcmp(argv[i], "-g") == 0 || strcmp(argv[i], "--goals") == 0) {
+	    if (++i < argc) {
+		goals_file.open(argv[i]);
+		if (!goals_file.is_open()) {
+		    cerr << "Error opening goals file: " << argv[i] << endl;
+		    return 0;
+		}
+		goals_set = i;
+		OUTPUT = false;
+		continue;
+	    }
+	    cerr << "Goals file expected after -g or --goals." << endl;
 	    return 0;
 	}
 
@@ -698,6 +720,38 @@ int main(int argc, char* argv[]) {
 	p.read();
     }
 
+    vector<const Concept*> goals;
+    if (goals_set) {
+	cerr << "READING GOALS from " << argv[goals_set] << endl;
+	string line;
+	while (getline(goals_file, line)) {
+	    stringstream ss(line);
+	    string s;
+	    vector<const AtomicConcept*> a;
+	    while (ss >> s) {
+		a.push_back(factory.atomic(s));
+		if (factory.atomic_tracker.was_new())
+		    cerr << "Warning: " << s << " does not occur in the ontology." << endl;
+	    }
+
+	    if (a.size() == 1) 
+		goals.push_back(a[0]);
+	    if (a.size() > 1) {
+		const DummyConcept* d = factory.dummy(line);
+		FOREACH(x, a)
+		    ontology.unary(d->ID(), Disjunction(*x));
+		goals.push_back(d);
+	    }
+	}
+    }
+    else {
+	vector<const AtomicConcept*> a = factory.all_atomic_ordered();
+	formatter.init(a);
+	goals.reserve(a.size());
+	FOREACH(x, a)
+	    goals.push_back(*x);
+    }
+
     timepoint[1] = clock();
     cerr << "CLASSIFICATION" << endl;
 
@@ -723,11 +777,6 @@ int main(int argc, char* argv[]) {
 
 
 
-
-
-       vector<const AtomicConcept*> atomics = factory.all_atomic_ordered();
-       formatter.init(atomics);
-
 	TOP_PRESENT = (ontology.unary_axioms.find(factory.top()->ID()) != ontology.unary_axioms.end());
 	TOP_OPT = TOP_OPT && TOP_PRESENT;
 
@@ -736,31 +785,33 @@ int main(int argc, char* argv[]) {
 		set_top_contexts();
 
        int progress = 0;
-       int total = atomics.size();
+       int total = goals.size();
        int percent = 1;
 //    for (vector<const AtomicConcept*>::reverse_iterator a = atomics.rbegin();  a != atomics.rend(); a++) {
-    for (vector<const AtomicConcept*>::iterator a = atomics.begin();  a != atomics.end(); a++) {
-	   if (++progress*100 > total*percent) {
-	       cerr << "\b\b\b" << percent << "%";
-	       percent++;
+       FOREACH(a, goals) {
+	progress++;
+	while (progress*100 > total*percent) {
+	    cerr << "\b\b\b" << percent << "%";
+	    percent++;
+	}
 
-	   }
+	Context now(make_pair(0, *a));
+	while (!active.empty()) {
+	    Context *c = active.front();
+	    active.pop_front();
+	    c->process();
+	}
 
-	   context_tracker(make_pair(0, (*a)->ID()));
-	   while (!active.empty()) {
-	       Context *c = active.front();
-	       active.pop_front();
-	       c->process();
-	   }
-	   all_contexts[0].pop_back();
-	   context_tracker.erase(make_pair(0, (*a)->ID()));
+	if (goals_set) {
+	    (output_set ? output : cout) << endl << (*a)->to_string() << endl;
+	    if (now.satisfiable) 
+		FOREACH(x, now.super)
+		    (output_set ? output : cout) << "  " << (*x)->to_string() << endl;
+	    else
+		(output_set ? output : cout) << "  owl:Nothing" << endl;
+	}
 
-	   /*
-	   cerr << progress << endl;
-	   cerr << "Contexts: " << context_init_number << " " << context_succ_number << endl;;
-	   cerr << "Axioms: " << axiom_init_number << " " << axiom_succ_number << endl;;
-	   */
-
+	all_contexts[0].pop_back();
        }
        cerr << "\b\b\b100%" << endl;
 

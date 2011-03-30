@@ -14,13 +14,12 @@ using namespace std;
 
 class Factory {
   hash_tracker<string, const AtomicRole> role_tracker;
-  hash_tracker<string, const AtomicConcept> atomic_tracker;
   tracker<const Concept*, const NegationConcept> negation_tracker;
   tracker<vector<const Concept*>, const ConjunctionConcept> conjunction_tracker;
   tracker<vector<const Concept*>, const DisjunctionConcept> disjunction_tracker;
   tracker<pair<const Role*, const Concept*>, const ExistentialConcept> existential_tracker;
   tracker<pair<const Role*, const Concept*>, const UniversalConcept> universal_tracker;
-  hash_tracker<int, const DummyConcept> dummy_tracker;
+  tracker<pair<int, string>, const DummyConcept> dummy_tracker;
   const TopConcept* top_tracker;
   const BottomConcept* bottom_tracker;
 
@@ -28,6 +27,7 @@ class Factory {
   unordered_map<ConceptID, const Concept*> concept_register;
 
   public:
+  hash_tracker<string, const AtomicConcept> atomic_tracker;
 
   Factory();
   ~Factory();
@@ -47,6 +47,7 @@ class Factory {
   const ExistentialConcept* existential(const Role* r, const Concept* c);
   const UniversalConcept* universal(const Role* r, const Concept* c);
   const DummyConcept* dummy(int id);
+  const DummyConcept* dummy(string name);
 
   vector<const AtomicConcept*> all_atomic_ordered();
 };
