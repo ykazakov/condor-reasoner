@@ -163,12 +163,11 @@ class UniversalConcept : public Concept {
 };
 
 class DummyConcept : public Concept {
-    const Role *r;
-    const Concept *c;
+   string name;
 
    public:
     virtual ~DummyConcept() {}
-    explicit DummyConcept(int ID) { id = ID; }
+    explicit DummyConcept(pair<int, string> p) { id = p.first; name = p.second; }
     virtual string to_string() const;
     virtual char type() const;
     virtual void accept(ConceptVisitor &visitor) const;

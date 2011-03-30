@@ -109,7 +109,14 @@ const UniversalConcept* Factory::universal(const Role* r, const Concept* c) {
 }
 
 const DummyConcept* Factory::dummy(int id) {
-  const DummyConcept* d = dummy_tracker(id);
+  const DummyConcept* d = dummy_tracker(make_pair(id, ""));
+  if (dummy_tracker.was_new()) 
+    concept_register[d->ID()] = d;
+  return d;
+}
+
+const DummyConcept* Factory::dummy(string name) {
+  const DummyConcept* d = dummy_tracker(make_pair(Concept::maximal_ID(), name));
   if (dummy_tracker.was_new()) 
     concept_register[d->ID()] = d;
   return d;

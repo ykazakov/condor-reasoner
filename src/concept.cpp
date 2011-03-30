@@ -107,6 +107,9 @@ string UniversalConcept::to_string() const {
 }
 
 string DummyConcept::to_string() const {
+    if (name != "")
+	return name;
+
     stringstream ss;
     ss << "Dummy(" << ID() << ")";
     return ss.str();
