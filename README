@@ -20,7 +20,7 @@ COPYRIGHT:
 
 All files in [src] are Copyright (c) 2010 Frantisek Simancik
 <frantisek.simancik@comlab.ox.ac.uk>, Yevgeny Kazakov
-<yevgeny.kazakov@comlab.ox.ac.uk> and Oxford University
+<yevgeny.kazakov@comlab.ox.ac.uk> and University of Oxford
 
 INSTALLATION:
 
@@ -41,7 +41,7 @@ REQUIREMENTS:
 Currently ConDOR can only read ontologies in OWL-2 functional-style
 syntax and supports a subsets of the constructors corresponding to SH.
 The reasoner will ignore any constructor or axiom type that it 
-doesn't support and issue a warning. This hould not result in any 
+doesn't support and issue a warning. This should not result in any 
 unsound inferences.
 
 For the description of OWL-2 functional-style syntax, see:
