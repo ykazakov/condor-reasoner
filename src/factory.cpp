@@ -40,9 +40,10 @@ const Concept* Factory::concept(ConceptID id) {
 
 const Role* Factory::role(const string& name) {
   const Role* r = role_tracker(name);
-  if (role_tracker.was_new()) 
+  if (role_tracker.was_new()) {
     role_register[r->ID()] = r;
     role_register[r->inverse()->ID()] = r->inverse();
+  }
   return r;
 }
 
