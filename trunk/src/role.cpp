@@ -82,6 +82,7 @@ void RoleHierarchy::closure() {
       }
     }
   }
+  closed = true;
 }
 
 RoleHierarchy::RoleHierarchy() : closed(false), all(NULL) {}
